@@ -15,7 +15,6 @@ const Visualizer = ({ data, theme, currentStep }) => {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [viewType, setViewType] = useState("bars");
   const [containerHeight, setContainerHeight] = useState("100%");
-  const resizeTimeoutRef = useRef(null);
 
   const drawVisualization = useCallback(
     (ctx, width, height) => {
@@ -28,6 +27,8 @@ const Visualizer = ({ data, theme, currentStep }) => {
       const barColor = theme === "dark" ? "#4a90e2" : "#2c5282";
       const comparisonColor = "#ff6b6b";
       const swappedColor = "#feca57";
+      const gridColor =
+        theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
 
       if (data && data.length > 0 && data[data.length - 1].current_array) {
         const currentData = data[data.length - 1];
@@ -35,6 +36,24 @@ const Visualizer = ({ data, theme, currentStep }) => {
 
         const arrayLength = current_array.length;
         const maxValue = Math.max(...current_array);
+
+        // Draw grid
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i <= arrayLength; i++) {
+          const x = (i / arrayLength) * width;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let i = 0; i <= 10; i++) {
+          const y = (i / 10) * height;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
 
         if (viewType === "bars") {
           const barWidth = Math.max(1, width / arrayLength / zoom);
@@ -99,6 +118,28 @@ const Visualizer = ({ data, theme, currentStep }) => {
             }
           });
         }
+
+        // Draw axes
+        ctx.strokeStyle = textColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        ctx.lineTo(width, height);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, height);
+        ctx.stroke();
+
+        // Draw axis labels
+        ctx.fillStyle = textColor;
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("Array Index", width / 2, height + 20);
+        ctx.save();
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText("Value", -height / 2, -20);
+        ctx.restore();
       } else {
         ctx.fillStyle = textColor;
         ctx.font = "16px Arial";
@@ -115,45 +156,20 @@ const Visualizer = ({ data, theme, currentStep }) => {
     [data, theme, zoom, pan, viewType]
   );
 
-  const handleResize = useCallback(
-    (width, height) => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        drawVisualization(ctx, width, height);
-      }
-    },
-    [drawVisualization]
-  );
-
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-
-      resizeTimeoutRef.current = setTimeout(() => {
-        for (let entry of entries) {
-          const { width, height } = entry.contentRect;
-          handleResize(width, height);
-        }
-      }, 100); // Debounce resize events
+    const ctx = canvas.getContext("2d");
+    const resizeObserver = new ResizeObserver(() => {
+      const { width, height } = canvas.getBoundingClientRect();
+      canvas.width = width;
+      canvas.height = height;
+      drawVisualization(ctx, width, height);
     });
 
     resizeObserver.observe(canvas);
 
-    return () => {
-      resizeObserver.disconnect();
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-    };
-  }, [handleResize]);
+    return () => resizeObserver.disconnect();
+  }, [drawVisualization]);
 
   useEffect(() => {
     const updateContainerHeight = () => {
@@ -162,13 +178,10 @@ const Visualizer = ({ data, theme, currentStep }) => {
       setContainerHeight(`${newHeight}px`);
     };
 
-    const debouncedUpdateContainerHeight = debounce(updateContainerHeight, 100);
-
     updateContainerHeight();
-    window.addEventListener("resize", debouncedUpdateContainerHeight);
+    window.addEventListener("resize", updateContainerHeight);
 
-    return () =>
-      window.removeEventListener("resize", debouncedUpdateContainerHeight);
+    return () => window.removeEventListener("resize", updateContainerHeight);
   }, []);
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev * 1.2, 5));
@@ -298,18 +311,5 @@ const ControlButton = ({ onClick, icon, tooltip, isActive = false, theme }) => {
     </button>
   );
 };
-
-// Utility function for debouncing
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
 
 export default Visualizer;
