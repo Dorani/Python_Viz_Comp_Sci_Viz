@@ -1,10 +1,16 @@
-from app.models.algorithm import BubbleSort, QuickSort, MergeSort
+from app.models.algorithm import BubbleSort, QuickSort, MergeSort, InsertionSort, SelectionSort, HeapSort, ShellSort, CountingSort, RadixSort
 
 class AlgorithmService:
     _algorithms = {
         "Bubble Sort": BubbleSort(),
         "Quick Sort": QuickSort(),
-        "Merge Sort": MergeSort()
+        "Merge Sort": MergeSort(),
+        "Insertion Sort": InsertionSort(),
+        "Selection Sort": SelectionSort(),
+        "Heap Sort": HeapSort(),
+        "Shell Sort": ShellSort(),
+        "Counting Sort": CountingSort(),
+        "Radix Sort": RadixSort()
     }
     _current_algorithm = None
 
