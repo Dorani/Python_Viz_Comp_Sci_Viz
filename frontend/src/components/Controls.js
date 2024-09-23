@@ -1,73 +1,77 @@
 import React from "react";
-import { Play, Square, SkipForward } from "lucide-react";
 
 const Controls = ({
   onStart,
   onStop,
+  onPlayPause,
+  onStepForward,
+  onStepBackward,
   isRunning,
-  onIteration,
-  canIterate,
+  isPlaying,
+  canPlay,
+  canStepForward,
+  canStepBackward,
   currentStep,
   totalSteps,
   theme,
+  onToggleSideView,
+  isSideViewOpen,
 }) => {
+  const buttonClass = `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+    theme === "dark"
+      ? "bg-gray-700 text-white hover:bg-gray-600"
+      : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+  }`;
+
+  const disabledButtonClass = `px-4 py-2 rounded-md text-sm font-medium ${
+    theme === "dark" ? "bg-gray-800 text-gray-500" : "bg-gray-100 text-gray-400"
+  } cursor-not-allowed`;
+
   return (
-    <div
-      className={`flex items-center justify-between p-4 rounded-lg ${
-        theme === "dark"
-          ? "bg-gray-800 text-gray-100"
-          : "bg-white text-gray-900"
-      }`}
-    >
-      <div className="flex space-x-2">
-        <button
-          onClick={isRunning ? onStop : onStart}
-          className={`px-4 py-2 rounded-md ${
-            isRunning
-              ? theme === "dark"
-                ? "bg-red-600 hover:bg-red-700"
-                : "bg-red-500 hover:bg-red-600"
-              : theme === "dark"
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-green-500 hover:bg-green-600"
-          } text-white transition-colors duration-200 flex items-center`}
-        >
-          {isRunning ? (
-            <>
-              <Square className="w-5 h-5 mr-2" />
-              Stop
-            </>
-          ) : (
-            <>
-              <Play className="w-5 h-5 mr-2" />
-              Start
-            </>
-          )}
-        </button>
-        <button
-          onClick={onIteration}
-          disabled={!canIterate}
-          className={`px-4 py-2 rounded-md ${
-            canIterate
-              ? theme === "dark"
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-blue-500 hover:bg-blue-600"
-              : theme === "dark"
-              ? "bg-gray-600"
-              : "bg-gray-300"
-          } text-white transition-colors duration-200 flex items-center`}
-        >
-          <SkipForward className="w-5 h-5 mr-2" />
-          Next Step
-        </button>
-      </div>
-      <div
-        className={`text-sm ${
-          theme === "dark" ? "text-gray-300" : "text-gray-600"
-        }`}
+    <div className="flex items-center space-x-4">
+      <button
+        onClick={onStart}
+        disabled={isRunning}
+        className={isRunning ? disabledButtonClass : buttonClass}
       >
+        Start
+      </button>
+      <button
+        onClick={onStop}
+        disabled={!isRunning && currentStep === 0}
+        className={
+          !isRunning && currentStep === 0 ? disabledButtonClass : buttonClass
+        }
+      >
+        ■
+      </button>
+      <button
+        onClick={onPlayPause}
+        disabled={!canPlay}
+        className={!canPlay ? disabledButtonClass : buttonClass}
+      >
+        {isPlaying ? "❚❚" : "▶"}
+      </button>
+      <button
+        onClick={onStepBackward}
+        disabled={!canStepBackward}
+        className={!canStepBackward ? disabledButtonClass : buttonClass}
+      >
+        ⏮
+      </button>
+      <button
+        onClick={onStepForward}
+        disabled={!canStepForward}
+        className={!canStepForward ? disabledButtonClass : buttonClass}
+      >
+        ⏭
+      </button>
+      <div className="mx-4 text-sm">
         Step: {currentStep + 1} / {totalSteps}
       </div>
+      <button onClick={onToggleSideView} className={buttonClass}>
+        {isSideViewOpen ? "◀" : "▶"}
+      </button>
     </div>
   );
 };

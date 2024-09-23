@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import CodeEditor from "./CodeEditor";
 import Visualizer from "./Visualizer";
 import Controls from "./Controls";
 import InputSelector from "./InputSelector";
 import { useTheme } from "../contexts/ThemeContext";
-import { socket } from "../socket";
 
 export default function AlgorithmVisualizer({
   code,
   onCodeChange,
+  visualizationData,
+  isRunning,
+  onStart,
+  onStop,
   selectedAlgorithm,
+  currentStep,
+  setCurrentStep,
 }) {
   const [editorHeight, setEditorHeight] = useState("auto");
-  const [currentStep, setCurrentStep] = useState(0);
   const [inputArray, setInputArray] = useState([]);
-  const [visualizationData, setVisualizationData] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(500); // Default speed: 500ms
   const { theme } = useTheme();
   const containerRef = React.useRef(null);
 
@@ -23,7 +27,7 @@ export default function AlgorithmVisualizer({
     const updateHeight = () => {
       if (containerRef.current) {
         const containerHeight = containerRef.current.clientHeight;
-        const newHeight = Math.max(300, containerHeight - 250);
+        const newHeight = Math.max(300, containerHeight - 350);
         setEditorHeight(`${newHeight}px`);
       }
     };
@@ -34,78 +38,127 @@ export default function AlgorithmVisualizer({
   }, []);
 
   useEffect(() => {
-    if (visualizationData.length > 0) {
-      setCurrentStep(0);
-    } else {
-      setCurrentStep(-1);
+    console.log("Visualization data updated:", visualizationData);
+    if (!visualizationData) {
+      console.warn(
+        "Visualization data is undefined for algorithm:",
+        selectedAlgorithm
+      );
     }
-  }, [visualizationData]);
+  }, [visualizationData, selectedAlgorithm]);
 
-  useEffect(() => {
-    socket.on("connect", () => {
-      console.log("Connected to server");
-    });
+  const handleInputSelect = useCallback(
+    (selectedArray) => {
+      setInputArray(selectedArray);
 
-    socket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    });
+      // Preserve the generic code and append the dynamic array
+      const genericCode = code.split("\n\n")[0]; // Assuming the generic code is the first block
+      const updatedCode = `${genericCode}\n\narr = ${JSON.stringify(
+        selectedArray
+      )}`;
 
-    socket.on("algorithm_step", (step) => {
-      console.log("Received algorithm step:", step);
-      setVisualizationData((prevData) => [...prevData, step]);
-    });
+      onCodeChange(updatedCode);
+    },
+    [code, onCodeChange]
+  );
 
-    socket.on("algorithm_complete", () => {
-      console.log("Algorithm completed");
-      setIsRunning(false);
-    });
+  const handleStart = useCallback(() => {
+    console.log(
+      "Starting algorithm:",
+      selectedAlgorithm,
+      "with input:",
+      inputArray
+    );
+    onStart(selectedAlgorithm, inputArray);
+  }, [onStart, selectedAlgorithm, inputArray]);
 
-    socket.on("error", (error) => {
-      console.error("Algorithm error:", error);
-      setIsRunning(false);
-    });
+  const handleStop = useCallback(() => {
+    console.log("Stopping algorithm");
+    onStop();
+    setIsPlaying(false);
+    setCurrentStep(0);
+  }, [onStop, setCurrentStep]);
 
-    return () => {
-      socket.off("algorithm_step");
-      socket.off("algorithm_complete");
-      socket.off("error");
-      socket.off("connect");
-      socket.off("disconnect");
-    };
+  const handlePlayPause = useCallback(() => {
+    console.log("Play/Pause toggled. Current isPlaying:", isPlaying);
+    setIsPlaying((prev) => !prev);
+  }, [isPlaying]);
+
+  const handleStepForward = useCallback(() => {
+    console.log("Stepping forward. Current step:", currentStep);
+    if (visualizationData && currentStep < visualizationData.length - 1) {
+      setCurrentStep((prev) => prev + 1);
+    }
+  }, [currentStep, visualizationData, setCurrentStep]);
+
+  const handleStepBackward = useCallback(() => {
+    console.log("Stepping backward. Current step:", currentStep);
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+    }
+  }, [currentStep, setCurrentStep]);
+
+  const handleSpeedChange = useCallback((event) => {
+    const newSpeed = 1100 - parseInt(event.target.value, 10);
+    console.log("Speed changed to:", newSpeed);
+    setPlaybackSpeed(newSpeed);
   }, []);
 
-  const handleIteration = () => {
-    if (currentStep < visualizationData.length - 1) {
-      setCurrentStep(currentStep + 1);
+  useEffect(() => {
+    let intervalId;
+    if (
+      isPlaying &&
+      visualizationData &&
+      currentStep < visualizationData.length - 1
+    ) {
+      console.log(
+        "Auto-playing. Current step:",
+        currentStep,
+        "Total steps:",
+        visualizationData.length
+      );
+      intervalId = setInterval(() => {
+        setCurrentStep((prev) => {
+          if (visualizationData && prev < visualizationData.length - 1) {
+            console.log("Auto-stepping to:", prev + 1);
+            return prev + 1;
+          } else {
+            console.log(
+              "Reached end of visualization or no data. Stopping playback."
+            );
+            setIsPlaying(false);
+            return prev;
+          }
+        });
+      }, playbackSpeed);
     }
-  };
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [
+    isPlaying,
+    currentStep,
+    visualizationData,
+    setCurrentStep,
+    playbackSpeed,
+  ]);
 
-  const canIterate =
-    visualizationData.length > 0 && currentStep < visualizationData.length - 1;
+  const canPlay = visualizationData && visualizationData.length > 0;
 
-  const handleInputSelect = (selectedArray) => {
-    setInputArray(selectedArray);
-    const updatedCode = `arr = ${JSON.stringify(selectedArray)}\n\n${code
-      .split("\n\n")
-      .slice(1)
-      .join("\n\n")}`;
-    onCodeChange(updatedCode);
-  };
-
-  const handleStart = () => {
-    console.log("Starting algorithm:", selectedAlgorithm, inputArray);
-    setIsRunning(true);
-    setVisualizationData([]);
-    socket.emit("execute_algorithm", {
-      name: selectedAlgorithm,
-      input: inputArray,
-    });
-  };
-
-  const handleStop = () => {
-    setIsRunning(false);
-    socket.emit("stop_algorithm");
-  };
+  console.log(
+    "Render - isRunning:",
+    isRunning,
+    "isPlaying:",
+    isPlaying,
+    "currentStep:",
+    currentStep,
+    "visualizationData length:",
+    visualizationData ? visualizationData.length : "N/A",
+    "canPlay:",
+    canPlay
+  );
 
   return (
     <div
@@ -127,7 +180,7 @@ export default function AlgorithmVisualizer({
               theme={theme}
             />
           </div>
-          <div className="mt-4 overflow-y-auto" style={{ maxHeight: "150px" }}>
+          <div className="mt-4 overflow-y-auto" style={{ height: "200px" }}>
             <InputSelector onInputSelect={handleInputSelect} theme={theme} />
           </div>
         </div>
@@ -139,24 +192,44 @@ export default function AlgorithmVisualizer({
             style={{ height: editorHeight }}
           >
             <Visualizer
-              data={visualizationData.slice(0, currentStep + 1)}
+              data={visualizationData || []}
               theme={theme}
               currentStep={currentStep}
             />
           </div>
         </div>
       </div>
-      <div className="mt-4">
+      <div className="mt-4 flex flex-col items-center">
         <Controls
           onStart={handleStart}
           onStop={handleStop}
+          onPlayPause={handlePlayPause}
+          onStepForward={handleStepForward}
+          onStepBackward={handleStepBackward}
           isRunning={isRunning}
-          onIteration={handleIteration}
-          canIterate={canIterate}
+          isPlaying={isPlaying}
+          canPlay={canPlay}
+          canStepForward={
+            visualizationData && currentStep < visualizationData.length - 1
+          }
+          canStepBackward={currentStep > 0}
           currentStep={currentStep}
-          totalSteps={visualizationData.length}
+          totalSteps={visualizationData ? visualizationData.length : 0}
           theme={theme}
         />
+        <div className="mt-4 flex items-center">
+          <span className="mr-4 text-sm font-medium">Playback Speed:</span>
+          <input
+            type="range"
+            min="100"
+            max="1000"
+            step="100"
+            value={1100 - playbackSpeed}
+            onChange={handleSpeedChange}
+            className="w-64"
+          />
+          <span className="ml-4 text-sm">{playbackSpeed}ms</span>
+        </div>
       </div>
     </div>
   );

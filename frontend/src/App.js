@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -27,8 +27,9 @@ function AppContent() {
   const [code, setCode] = useState("");
   const [visualizationData, setVisualizationData] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [showAbout, setShowAbout] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -57,22 +58,29 @@ function AppContent() {
 
     socket.on("algorithm_step", (step) => {
       console.log("Received algorithm step:", step);
-      setVisualizationData((prevData) => [...prevData, step]);
+      setVisualizationData((prevData) => {
+        const newData = [...prevData, step];
+        console.log("Updated visualization data:", newData);
+        return newData;
+      });
     });
 
     socket.on("algorithm_complete", () => {
       console.log("Algorithm completed");
       setIsRunning(false);
+      setIsPlaying(false);
     });
 
     socket.on("algorithm_stopped", () => {
       console.log("Algorithm stopped");
       setIsRunning(false);
+      setIsPlaying(false);
     });
 
     socket.on("error", (error) => {
       console.error("Algorithm error:", error);
       setIsRunning(false);
+      setIsPlaying(false);
     });
 
     return () => {
@@ -85,7 +93,7 @@ function AppContent() {
     };
   }, []);
 
-  const handleAlgorithmSelect = (algorithmName) => {
+  const handleAlgorithmSelect = useCallback((algorithmName) => {
     console.log("Selected algorithm:", algorithmName);
     setSelectedAlgorithm(algorithmName);
     setCode(
@@ -93,32 +101,48 @@ function AppContent() {
         .toLowerCase()
         .replace(" ", "_")}(arr):\n    # Implementation goes here\n    pass`
     );
-    setShowAbout(false);
-  };
+  }, []);
 
-  const handleStart = (algorithm, inputArray) => {
+  const handleStart = useCallback((algorithm, inputArray) => {
     console.log("Starting algorithm:", algorithm);
     setIsRunning(true);
+    setIsPlaying(true);
     setVisualizationData([]);
+    setCurrentStep(0);
     socket.emit("execute_algorithm", {
       name: algorithm,
       input: inputArray,
     });
-  };
+  }, []);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     console.log("Stopping algorithm");
     setIsRunning(false);
+    setIsPlaying(false);
+    setCurrentStep(0);
     socket.emit("stop_algorithm");
-  };
+  }, []);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  const handlePlayPause = useCallback(() => {
+    console.log("Play/Pause toggled");
+    setIsPlaying((prev) => !prev);
+  }, []);
 
-  const toggleAbout = () => {
-    setShowAbout(!showAbout);
-  };
+  const handleStepForward = useCallback(() => {
+    if (currentStep < visualizationData.length - 1) {
+      setCurrentStep((prev) => prev + 1);
+    }
+  }, [currentStep, visualizationData.length]);
+
+  const handleStepBackward = useCallback(() => {
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+    }
+  }, [currentStep]);
+
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => !prev);
+  }, []);
 
   return (
     <div
@@ -128,7 +152,7 @@ function AppContent() {
           : "bg-gray-100 text-gray-900"
       }`}
     >
-      <Navbar onMenuClick={toggleSidebar} onAboutClick={toggleAbout} />
+      <Navbar onMenuClick={toggleSidebar} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           algorithms={algorithms}
@@ -147,20 +171,27 @@ function AppContent() {
             <Route path="/login" element={<Login />} />
             <Route path="/about" element={<About />} />
             <Route
-              path="/"
+              path="/home"
               element={
                 <AlgorithmVisualizer
                   code={code}
                   onCodeChange={setCode}
                   visualizationData={visualizationData}
                   isRunning={isRunning}
+                  isPlaying={isPlaying}
                   onStart={handleStart}
                   onStop={handleStop}
+                  onPlayPause={handlePlayPause}
+                  onStepForward={handleStepForward}
+                  onStepBackward={handleStepBackward}
                   selectedAlgorithm={selectedAlgorithm}
+                  currentStep={currentStep}
+                  setCurrentStep={setCurrentStep}
                 />
               }
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/" element={<Navigate to="/about" replace />} />
+            <Route path="*" element={<Navigate to="/about" replace />} />
           </Routes>
         </div>
       </div>

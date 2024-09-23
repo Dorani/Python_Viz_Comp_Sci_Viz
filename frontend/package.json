@@ -13,6 +13,7 @@
     "autoprefixer": "^10.4.20",
     "axios": "^1.7.7",
     "framer-motion": "^11.5.6",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.441.0",
     "postcss": "^8.4.47",
     "react": "^18.3.1",
@@ -48,5 +49,8 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:5001"
+  "proxy": "http://localhost:5001",
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+  }
 }

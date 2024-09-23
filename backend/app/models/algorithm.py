@@ -39,12 +39,15 @@ class QuickSort(Algorithm):
 
     def _quick_sort(self, arr, low, high):
         if low < high and not self.stop_flag:
-            partition_gen = self._partition(arr, low, high)
-            for step in partition_gen:
-                yield step
-            pi = next(partition_gen)  # Get the actual partition index
-            yield from self._quick_sort(arr, low, pi - 1)
-            yield from self._quick_sort(arr, pi + 1, high)
+            partition_index = None
+            for step in self._partition(arr, low, high):
+                if isinstance(step, int):
+                    partition_index = step
+                else:
+                    yield step
+            if partition_index is not None:
+                yield from self._quick_sort(arr, low, partition_index - 1)
+                yield from self._quick_sort(arr, partition_index + 1, high)
 
     def _partition(self, arr, low, high):
         i = low - 1

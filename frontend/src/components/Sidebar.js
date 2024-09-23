@@ -1,5 +1,4 @@
 import React from "react";
-import { X } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 const Sidebar = ({
@@ -7,7 +6,6 @@ const Sidebar = ({
   selectedAlgorithm,
   onAlgorithmSelect,
   isOpen,
-  onClose,
 }) => {
   const { theme } = useTheme();
 
@@ -19,7 +17,7 @@ const Sidebar = ({
         isOpen ? "translate-x-0" : "-translate-x-full"
       } z-20 overflow-y-auto`}
     >
-      <div className="flex justify-between items-center p-4 sticky top-0 bg-opacity-90 backdrop-filter backdrop-blur-sm">
+      <div className="p-4 sticky top-0 bg-opacity-90 backdrop-filter backdrop-blur-sm">
         <h2
           className={`text-xl font-semibold ${
             theme === "dark" ? "text-white" : "text-gray-800"
@@ -27,14 +25,6 @@ const Sidebar = ({
         >
           Algorithms
         </h2>
-        <button
-          onClick={onClose}
-          className={`p-1 rounded-full ${
-            theme === "dark" ? "hover:bg-gray-700" : "hover:bg-gray-200"
-          }`}
-        >
-          <X size={24} />
-        </button>
       </div>
       <nav className="mt-4">
         <ul>
