@@ -293,6 +293,7 @@ class CountingSort(Algorithm):
                 'comparisons': [i],
                 'swapped': arr[i] != input_data[i]
             }
+
 class RadixSort(Algorithm):
     def __init__(self):
         super().__init__("Radix Sort", "Sorting")
@@ -345,3 +346,97 @@ class RadixSort(Algorithm):
                 'comparisons': [i],
                 'swapped': arr[i] != output[i]
             }
+
+class TreeNode:
+    def __init__(self, value):
+        self.value = value
+        self.left = None
+        self.right = None
+
+def tree_to_dict(node):
+    if node is None:
+        return None
+    return {
+        'name': str(node.value),
+        'children': [tree_to_dict(node.left), tree_to_dict(node.right)]
+    }
+
+class BinaryTreeTraversal(Algorithm):
+    def __init__(self):
+        super().__init__("Binary Tree Traversal", "Trees")
+
+    def execute(self, input_data):
+        def inorder(node, steps):
+            if node:
+                inorder(node.left, steps)
+                steps.append({
+                    'visited': node.value,
+                    'treeState': tree_to_dict(root)
+                })
+                if self.stop_flag:
+                    return
+                inorder(node.right, steps)
+
+        root = self._create_tree(input_data)
+        steps = []
+        inorder(root, steps)
+        for step in steps:
+            yield step
+
+    def _create_tree(self, values):
+        if not values:
+            return None
+        root = TreeNode(values[0])
+        for value in values[1:]:
+            self._insert(root, value)
+        return root
+
+    def _insert(self, root, value):
+        if value < root.value:
+            if root.left is None:
+                root.left = TreeNode(value)
+            else:
+                self._insert(root.left, value)
+        else:
+            if root.right is None:
+                root.right = TreeNode(value)
+            else:
+                self._insert(root.right, value)
+
+class BinarySearchTreeInsertion(Algorithm):
+    def __init__(self):
+        super().__init__("Binary Search Tree Insertion", "Trees")
+
+    def execute(self, input_data):
+        root = None
+        for value in input_data:
+            if self.stop_flag:
+                return
+            root = self._insert(root, value)
+            yield {
+                'inserted': value,
+                'treeState': tree_to_dict(root)
+            }
+
+    def _insert(self, root, value):
+        if root is None:
+            return TreeNode(value)
+        if value < root.value:
+            root.left = self._insert(root.left, value)
+        else:
+            root.right = self._insert(root.right, value)
+        return root
+
+ALGORITHMS = {
+    "Bubble Sort": BubbleSort,
+    "Quick Sort": QuickSort,
+    "Merge Sort": MergeSort,
+    "Insertion Sort": InsertionSort,
+    "Selection Sort": SelectionSort,
+    "Heap Sort": HeapSort,
+    "Shell Sort": ShellSort,
+    "Counting Sort": CountingSort,
+    "Radix Sort": RadixSort,
+    "Binary Tree Traversal": BinaryTreeTraversal,
+    "Binary Search Tree Insertion": BinarySearchTreeInsertion
+}

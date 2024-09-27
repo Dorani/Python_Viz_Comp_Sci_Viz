@@ -1,4 +1,8 @@
-from app.models.algorithm import BubbleSort, QuickSort, MergeSort, InsertionSort, SelectionSort, HeapSort, ShellSort, CountingSort, RadixSort
+from app.models.algorithm import (
+    BubbleSort, QuickSort, MergeSort, InsertionSort, SelectionSort,
+    HeapSort, ShellSort, CountingSort, RadixSort,
+    BinaryTreeTraversal, BinarySearchTreeInsertion
+)
 
 class AlgorithmService:
     _algorithms = {
@@ -10,7 +14,9 @@ class AlgorithmService:
         "Heap Sort": HeapSort(),
         "Shell Sort": ShellSort(),
         "Counting Sort": CountingSort(),
-        "Radix Sort": RadixSort()
+        "Radix Sort": RadixSort(),
+        "Binary Tree Traversal": BinaryTreeTraversal(),
+        "Binary Search Tree Insertion": BinarySearchTreeInsertion()
     }
     _current_algorithm = None
 
