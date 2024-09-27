@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -21,8 +21,14 @@ const socket = io(BACKEND_URL, {
   transports: ["websocket", "polling"],
 });
 
+const initialAlgorithms = [
+  { id: "tree-1", name: "Binary Tree Traversal", category: "Trees" },
+  { id: "tree-2", name: "Binary Search Tree Insertion", category: "Trees" },
+];
+
 function AppContent() {
-  const [algorithms, setAlgorithms] = useState([]);
+  const [algorithms, setAlgorithms] = useState(initialAlgorithms);
+  const algorithmsRef = useRef(initialAlgorithms);
   const [selectedAlgorithm, setSelectedAlgorithm] = useState("");
   const [code, setCode] = useState("");
   const [visualizationData, setVisualizationData] = useState([]);
@@ -38,7 +44,23 @@ function AppContent() {
       .get(`${BACKEND_URL}/api/algorithms`, { withCredentials: true })
       .then((response) => {
         console.log("Fetched algorithms:", response.data);
-        setAlgorithms(response.data);
+        const fetchedAlgorithms = response.data.map((algo, index) => ({
+          ...algo,
+          id: `sorting-${index + 1}`,
+        }));
+        // Merge fetched algorithms with initial algorithms, removing duplicates
+        const mergedAlgorithms = [
+          ...fetchedAlgorithms,
+          ...initialAlgorithms.filter(
+            (algo) =>
+              !fetchedAlgorithms.some(
+                (fetchedAlgo) => fetchedAlgo.name === algo.name
+              )
+          ),
+        ];
+        console.log("Merged algorithms:", mergedAlgorithms);
+        setAlgorithms(mergedAlgorithms);
+        algorithmsRef.current = mergedAlgorithms;
       })
       .catch((error) => {
         console.error("Error fetching algorithms:", error);
@@ -93,25 +115,35 @@ function AppContent() {
     };
   }, []);
 
+  useEffect(() => {
+    console.log("Algorithms updated:", algorithms);
+    algorithmsRef.current = algorithms;
+  }, [algorithms]);
+
   const handleAlgorithmSelect = useCallback((algorithmName) => {
     console.log("Selected algorithm:", algorithmName);
     setSelectedAlgorithm(algorithmName);
+    const isTreeAlgorithm = algorithmName.toLowerCase().includes("tree");
     setCode(
-      `def ${algorithmName
-        .toLowerCase()
-        .replace(" ", "_")}(arr):\n    # Implementation goes here\n    pass`
+      isTreeAlgorithm
+        ? `def ${algorithmName.toLowerCase().replace(" ", "_")}(tree):
+    # Implementation goes here
+    pass`
+        : `def ${algorithmName.toLowerCase().replace(" ", "_")}(arr):
+    # Implementation goes here
+    pass`
     );
   }, []);
 
-  const handleStart = useCallback((algorithm, inputArray) => {
-    console.log("Starting algorithm:", algorithm);
+  const handleStart = useCallback((algorithm, inputData) => {
+    console.log("Starting algorithm:", algorithm, "with input:", inputData);
     setIsRunning(true);
     setIsPlaying(true);
     setVisualizationData([]);
     setCurrentStep(0);
     socket.emit("execute_algorithm", {
       name: algorithm,
-      input: inputArray,
+      input: inputData,
     });
   }, []);
 
@@ -155,7 +187,7 @@ function AppContent() {
       <Navbar onMenuClick={toggleSidebar} />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
-          algorithms={algorithms}
+          algorithms={algorithmsRef.current}
           selectedAlgorithm={selectedAlgorithm}
           onAlgorithmSelect={handleAlgorithmSelect}
           isOpen={isSidebarOpen}

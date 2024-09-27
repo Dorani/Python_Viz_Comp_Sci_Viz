@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function InputSelector({ onInputSelect, theme }) {
+export default function InputSelector({ onInputSelect, theme, isTreeInput }) {
   const [inputType, setInputType] = useState("manual");
   const [manualInput, setManualInput] = useState("");
   const [arraySize, setArraySize] = useState(10);
@@ -37,18 +37,30 @@ export default function InputSelector({ onInputSelect, theme }) {
     return arr;
   };
 
+  const generateRandomTree = () => {
+    const treeNodes = [];
+    for (let i = 0; i < arraySize; i++) {
+      treeNodes.push(
+        Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue
+      );
+    }
+    return treeNodes;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    let selectedArray;
+    let selectedInput;
     if (inputType === "manual") {
-      selectedArray = manualInput
+      selectedInput = manualInput
         .split(",")
         .map((num) => parseInt(num.trim()))
         .filter((num) => !isNaN(num));
     } else {
-      selectedArray = generateRandomArray();
+      selectedInput = isTreeInput
+        ? generateRandomTree()
+        : generateRandomArray();
     }
-    onInputSelect(selectedArray);
+    onInputSelect(selectedInput);
   };
 
   return (
@@ -74,7 +86,11 @@ export default function InputSelector({ onInputSelect, theme }) {
             type="text"
             value={manualInput}
             onChange={handleManualInputChange}
-            placeholder="Enter numbers separated by commas"
+            placeholder={
+              isTreeInput
+                ? "Enter tree nodes separated by commas"
+                : "Enter numbers separated by commas"
+            }
             className={`w-full p-2 border rounded ${
               theme === "dark"
                 ? "bg-gray-700 border-gray-600"
@@ -100,7 +116,7 @@ export default function InputSelector({ onInputSelect, theme }) {
               type="number"
               value={arraySize}
               onChange={handleArraySizeChange}
-              placeholder="Array Size"
+              placeholder={isTreeInput ? "Tree Size" : "Array Size"}
               className={`w-1/3 p-2 border rounded ${
                 theme === "dark"
                   ? "bg-gray-700 border-gray-600"

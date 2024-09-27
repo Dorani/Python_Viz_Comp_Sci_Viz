@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import TreeVisualizer from "./TreeVisualizer";
 
 const Visualizer = ({ data, theme, currentStep }) => {
   const canvasRef = useRef(null);
@@ -18,7 +19,7 @@ const Visualizer = ({ data, theme, currentStep }) => {
       const maxValue = Math.max(...current_array);
 
       const barWidth = width / arrayLength;
-      const scaleFactor = height / maxValue; // Remove the subtraction of 40 to use full height
+      const scaleFactor = height / maxValue;
 
       // Set background color
       ctx.fillStyle = theme === "dark" ? "#1f2937" : "#ffffff";
@@ -99,7 +100,7 @@ const Visualizer = ({ data, theme, currentStep }) => {
   useEffect(() => {
     const updateContainerHeight = () => {
       const windowHeight = window.innerHeight;
-      const newHeight = windowHeight * 0.6; // 60% of the window height
+      const newHeight = windowHeight * 0.6;
       setContainerHeight(`${newHeight}px`);
     };
 
@@ -129,8 +130,10 @@ const Visualizer = ({ data, theme, currentStep }) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    drawVisualization(ctx, canvasSize.width, canvasSize.height);
-  }, [drawVisualization, canvasSize]);
+    if (!data || !data[currentStep] || !data[currentStep].treeState) {
+      drawVisualization(ctx, canvasSize.width, canvasSize.height);
+    }
+  }, [drawVisualization, canvasSize, data, currentStep]);
 
   const currentArray =
     data &&
@@ -140,15 +143,22 @@ const Visualizer = ({ data, theme, currentStep }) => {
       ? data[currentStep].current_array
       : [];
 
+  const isTreeVisualization =
+    data && data[currentStep] && data[currentStep].treeState;
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex-grow relative" style={{ height: containerHeight }}>
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full"
-          width={canvasSize.width}
-          height={canvasSize.height}
-        />
+        {isTreeVisualization ? (
+          <TreeVisualizer data={data} currentStep={currentStep} theme={theme} />
+        ) : (
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full"
+            width={canvasSize.width}
+            height={canvasSize.height}
+          />
+        )}
       </div>
       <div
         className={`p-4 ${

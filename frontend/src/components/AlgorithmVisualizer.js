@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
+import PropTypes from "prop-types";
 import CodeEditor from "./CodeEditor";
 import Visualizer from "./Visualizer";
+import TreeVisualizer from "./TreeVisualizer";
 import Controls from "./Controls";
 import InputSelector from "./InputSelector";
 import { useTheme } from "../contexts/ThemeContext";
@@ -10,15 +12,18 @@ export default function AlgorithmVisualizer({
   onCodeChange,
   visualizationData,
   isRunning,
+  isPlaying,
   onStart,
   onStop,
+  onPlayPause,
+  onStepForward,
+  onStepBackward,
   selectedAlgorithm,
   currentStep,
   setCurrentStep,
 }) {
   const [editorHeight, setEditorHeight] = useState("auto");
-  const [inputArray, setInputArray] = useState([]);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [inputData, setInputData] = useState([]);
   const [playbackSpeed, setPlaybackSpeed] = useState(500); // Default speed: 500ms
   const { theme } = useTheme();
   const containerRef = React.useRef(null);
@@ -48,18 +53,20 @@ export default function AlgorithmVisualizer({
   }, [visualizationData, selectedAlgorithm]);
 
   const handleInputSelect = useCallback(
-    (selectedArray) => {
-      setInputArray(selectedArray);
+    (selectedData) => {
+      setInputData(selectedData);
 
-      // Preserve the generic code and append the dynamic array
+      // Preserve the generic code and append the dynamic input data
       const genericCode = code.split("\n\n")[0]; // Assuming the generic code is the first block
-      const updatedCode = `${genericCode}\n\narr = ${JSON.stringify(
-        selectedArray
+      const isTreeAlgorithm = selectedAlgorithm.toLowerCase().includes("tree");
+      const variableName = isTreeAlgorithm ? "tree" : "arr";
+      const updatedCode = `${genericCode}\n\n${variableName} = ${JSON.stringify(
+        selectedData
       )}`;
 
       onCodeChange(updatedCode);
     },
-    [code, onCodeChange]
+    [code, onCodeChange, selectedAlgorithm]
   );
 
   const handleStart = useCallback(() => {
@@ -67,36 +74,10 @@ export default function AlgorithmVisualizer({
       "Starting algorithm:",
       selectedAlgorithm,
       "with input:",
-      inputArray
+      inputData
     );
-    onStart(selectedAlgorithm, inputArray);
-  }, [onStart, selectedAlgorithm, inputArray]);
-
-  const handleStop = useCallback(() => {
-    console.log("Stopping algorithm");
-    onStop();
-    setIsPlaying(false);
-    setCurrentStep(0);
-  }, [onStop, setCurrentStep]);
-
-  const handlePlayPause = useCallback(() => {
-    console.log("Play/Pause toggled. Current isPlaying:", isPlaying);
-    setIsPlaying((prev) => !prev);
-  }, [isPlaying]);
-
-  const handleStepForward = useCallback(() => {
-    console.log("Stepping forward. Current step:", currentStep);
-    if (visualizationData && currentStep < visualizationData.length - 1) {
-      setCurrentStep((prev) => prev + 1);
-    }
-  }, [currentStep, visualizationData, setCurrentStep]);
-
-  const handleStepBackward = useCallback(() => {
-    console.log("Stepping backward. Current step:", currentStep);
-    if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
-    }
-  }, [currentStep, setCurrentStep]);
+    onStart(selectedAlgorithm, inputData);
+  }, [onStart, selectedAlgorithm, inputData]);
 
   const handleSpeedChange = useCallback((event) => {
     const newSpeed = 1100 - parseInt(event.target.value, 10);
@@ -126,7 +107,7 @@ export default function AlgorithmVisualizer({
             console.log(
               "Reached end of visualization or no data. Stopping playback."
             );
-            setIsPlaying(false);
+            onPlayPause();
             return prev;
           }
         });
@@ -143,22 +124,12 @@ export default function AlgorithmVisualizer({
     visualizationData,
     setCurrentStep,
     playbackSpeed,
+    onPlayPause,
   ]);
 
   const canPlay = visualizationData && visualizationData.length > 0;
 
-  console.log(
-    "Render - isRunning:",
-    isRunning,
-    "isPlaying:",
-    isPlaying,
-    "currentStep:",
-    currentStep,
-    "visualizationData length:",
-    visualizationData ? visualizationData.length : "N/A",
-    "canPlay:",
-    canPlay
-  );
+  const isTreeAlgorithm = selectedAlgorithm.toLowerCase().includes("tree");
 
   return (
     <div
@@ -181,7 +152,11 @@ export default function AlgorithmVisualizer({
             />
           </div>
           <div className="mt-4 overflow-y-auto" style={{ height: "200px" }}>
-            <InputSelector onInputSelect={handleInputSelect} theme={theme} />
+            <InputSelector
+              onInputSelect={handleInputSelect}
+              theme={theme}
+              isTreeInput={isTreeAlgorithm}
+            />
           </div>
         </div>
         <div className="w-1/2 flex flex-col overflow-hidden">
@@ -191,21 +166,28 @@ export default function AlgorithmVisualizer({
             } rounded-lg overflow-hidden`}
             style={{ height: editorHeight }}
           >
-            <Visualizer
-              data={visualizationData || []}
-              theme={theme}
-              currentStep={currentStep}
-            />
+            {isTreeAlgorithm ? (
+              <TreeVisualizer
+                data={visualizationData || []}
+                currentStep={currentStep}
+              />
+            ) : (
+              <Visualizer
+                data={visualizationData || []}
+                theme={theme}
+                currentStep={currentStep}
+              />
+            )}
           </div>
         </div>
       </div>
       <div className="mt-4 flex flex-col items-center">
         <Controls
           onStart={handleStart}
-          onStop={handleStop}
-          onPlayPause={handlePlayPause}
-          onStepForward={handleStepForward}
-          onStepBackward={handleStepBackward}
+          onStop={onStop}
+          onPlayPause={onPlayPause}
+          onStepForward={onStepForward}
+          onStepBackward={onStepBackward}
           isRunning={isRunning}
           isPlaying={isPlaying}
           canPlay={canPlay}
@@ -218,8 +200,11 @@ export default function AlgorithmVisualizer({
           theme={theme}
         />
         <div className="mt-4 flex items-center">
-          <span className="mr-4 text-sm font-medium">Playback Speed:</span>
+          <label htmlFor="playbackSpeed" className="mr-4 text-sm font-medium">
+            Playback Speed:
+          </label>
           <input
+            id="playbackSpeed"
             type="range"
             min="100"
             max="1000"
@@ -227,6 +212,9 @@ export default function AlgorithmVisualizer({
             value={1100 - playbackSpeed}
             onChange={handleSpeedChange}
             className="w-64"
+            aria-valuemin="100"
+            aria-valuemax="1000"
+            aria-valuenow={1100 - playbackSpeed}
           />
           <span className="ml-4 text-sm">{playbackSpeed}ms</span>
         </div>
@@ -234,3 +222,19 @@ export default function AlgorithmVisualizer({
     </div>
   );
 }
+
+AlgorithmVisualizer.propTypes = {
+  code: PropTypes.string.isRequired,
+  onCodeChange: PropTypes.func.isRequired,
+  visualizationData: PropTypes.array,
+  isRunning: PropTypes.bool.isRequired,
+  isPlaying: PropTypes.bool.isRequired,
+  onStart: PropTypes.func.isRequired,
+  onStop: PropTypes.func.isRequired,
+  onPlayPause: PropTypes.func.isRequired,
+  onStepForward: PropTypes.func.isRequired,
+  onStepBackward: PropTypes.func.isRequired,
+  selectedAlgorithm: PropTypes.string.isRequired,
+  currentStep: PropTypes.number.isRequired,
+  setCurrentStep: PropTypes.func.isRequired,
+};
